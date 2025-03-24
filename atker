@@ -1,57 +1,84 @@
 #!/usr/bin/env bash
-server="192.168.56.103"
-#case "$1" in
-#	1)
-#		echo "curl script"
-#		sudo timeout 60s bash -c "while true; do curl $server; done"
-#		;;
-#	2)
-#		echo "hping3 with 0.01s intervals (~100 packet/s)"
-#		sudo timeout 60s hping3 -i u10000 -S -p 80 $server
-#		;;
-#	3)
-#		echo "hping3 with 0.005s intervals (~200 packet/s)"
-#		sudo timeout 60s hping3 -i u5000 -S -p 80 $server
-#		;;
-#	4)
-#		echo "hping3 with 0.01s intervals (~100 packet/s) and payload 1kB"
-#		sudo timeout 60s hping3 -i u10000 -S -p 80 -d 1000 $server
-#		;;
-#	5)
-#		echo "hping3 with 0.01s intervals (~100 packet/s) and payload 26B"
-#		sudo timeout 60s hping3 -i u10000 -S -p 80 -d 26 $server
-#		;;
-#	6)
-#		echo "hping3 with 0.005s intervals (~200 packet/s) and payload 26B"
-#		sudo timeout 60s hping3 -i u5000 -S -p 80 -d 26 $server
-#		;;
-#	*)
-#		echo
-#		echo "Invalid option. Available options: 1, 2, 3, 4, 5, 6"
-#		echo "Exiting..."
-#		;;
-#esac
+
 if "$1" == "-h"; then
 	echo "Usage: ./atker [protocol] [profile]"
 	echo "Available protocols: HTTP, TCP, UDP, ICMP"
 	echo "Available profiles: "
-	echo "	- HTTP: N/A"
-	echo "	- TCP: N/A"
-	echo "	- UDP: N/A"
-	echo "	- ICMP: N/A"
+	echo "	- #1: 100 packets/s, 0B body (-i u10000)"
+	echo "	- #2: 200 packets/s, 0B body (-i u5000)"
+	echo "	- #3: 100 packets/s, small body (-i u10000 -d X)"
+	echo "		+ TCP: 26 bytes"
+	echo "		+ UDP: 50 bytes"
+	echo "		+ ICMP: 48 bytes"
+	echo "	- #4: N/A"
 else
 	PROTOCOL=$(echo "$1" | tr '[:upper:]' '[:lower:]')
-	echo -n "Attacker running $PROTOCOL w/ profile #$2 - "
+	echo -n "Attacker sending $PROTOCOL packets with profile #$2 - "
+	SERVER="192.168.56.103"
+	SPEED="0"
+	LOAD="0"
+	FLAG=""
+	PORT=""
+	MODE=""
+	
+	case "$2" in
+		1)
+			SPEED="u10000"
+			echo "100 packets/s"
 
-	case "$1" in
-		TCP)
-			
 			;;
-		HTTP)
+		2)
+			SPEED="u5000"
+			echo "200 packets/s"
 			;;
-		UDP)
+		3)
+			SPEED="u10000"
+			case $PROTOCOL in
+				tcp)
+					LOAD="26"
+					;;
+				udp)
+					LOAD="50"
+					;;
+				icmp)
+					
+					LOAD="48"
+					;;
+				*)
+					;;
+			esac
+			echo "100 packets/s, ${LOAD}B payload"
 			;;
-		ICMP)
+		4)
+			SPEED="u5000"
+			LOAD="1000"
+			echo "200 packets/s, 1KB payload"
+			;;
+		*)
+			echo "Invalid profile: Available profiles: 1, 2, 3, 4. View \"-h\" for more details."
+			echo "Exiting..."
+			;;
+	esac
+
+	case $PROTOCOL in
+		tcp | udp | icmp)
+			case $PROTOCOL in
+				tcp)
+					FLAG="-S" # --syn
+					PORT="-p 80"
+					;;
+				udp)
+					PORT="-p 80"
+					MODE="-2" # --udp
+					;;
+				icmp)
+					MODE="-1" # --icmp
+					;;
+			esac
+			sudo timeout 45s hping3 $MODE -i $SPEED -d $LOAD $FLAG $PORT $SERVER
+			;;
+		http)
+			sudo timeout 45s bash -c "while true; do curl $SERVER; done"
 			;;
 		*)
 			echo
