@@ -4,15 +4,16 @@ if [[ "$1" == "-h" ]]; then
 	echo "Usage: ./atker [protocol] [profile]"
 	echo "Available protocols: HTTP, TCP, UDP, ICMP"
 	echo "Available profiles: "
-	echo "	- #1: 100 packets/s, 0B body (-i u10000)"
-	echo "	- #2: 200 packets/s, 0B body (-i u5000)"
-	echo "	- #3: 100 packets/s, small body (-i u10000 -d X)"
+	echo "	- #1: 100 packets/s, 0B payload (-i u10000)"
+	echo "	- #2: 200 packets/s, 0B payload (-i u5000)"
+	echo "	- #3: 100 packets/s, small payload (-i u10000 -d X)"
 	echo "		+ TCP: 26 bytes"
 	echo "		+ UDP: 50 bytes"
 	echo "		+ ICMP: 48 bytes"
-	echo "	- #4: N/A"
+	echo "	- #4: 100 packets/s, 1KB payload (-i u10000 -d 1000)"
 else
 	PROTOCOL=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+	date >> time.txt
 	echo -n "Attacker sending $PROTOCOL packets with profile #$2 - "
 	SERVER="192.168.56.103"
 	SPEED="0"
@@ -50,13 +51,17 @@ else
 			echo "100 packets/s, ${LOAD}B payload"
 			;;
 		4)
-			SPEED="u5000"
+			SPEED="u10000"
 			LOAD="1000"
-			echo "200 packets/s, 1KB payload"
+			echo "100 packets/s, 1KB payload"
 			;;
 		*)
-			echo "Invalid profile: Available profiles: 1, 2, 3, 4. View \"-h\" for more details."
-			echo "Exiting..."
+			if [[ $1 != http ]]; then
+				echo "Invalid profile: Available profiles: 1, 2, 3, 4. View \"-h\" for more details."
+				echo "Exiting..."
+			else
+				echo ""
+			fi
 			;;
 	esac
 
